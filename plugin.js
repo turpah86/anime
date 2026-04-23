@@ -1,42 +1,79 @@
 (function () {
     'use strict';
 
-    // 1. Регистрируем саму страницу (это работает везде)
-    Lampa.Component.add('my_hack', function (object) {
+    Lampa.Component.add('my_hacker_anime', function (object) {
         var comp = new Lampa.InteractionMain(object);
+        
         comp.create = function () {
-            return '<div style="padding: 100px; text-align: center;"><h1>💎 ХАКЕР АНИМЕ 💎</h1><p>Кнопка вставлена в обход системной ошибки!</p></div>';
+            this.activity.loader(true);
+            var _this = this;
+
+            // Тянем данные из открытой базы (как это делают все аниме-плагины)
+            Lampa.HTTP.get('https://jikan.moe', function (data) {
+                var items = data.data.map(function (a) {
+                    return {
+                        title: a.title,
+                        name: a.title,
+                        img: a.images.jpg.image_url,
+                        background_image: a.images.jpg.large_image_url,
+                        description: a.synopsis,
+                        year: a.year,
+                        rating: a.score
+                    };
+                });
+
+                _this.build(items);
+                _this.activity.loader(false);
+            }, function () {
+                Lampa.Noty.show('Ошибка загрузки базы аниме');
+            });
+
+            return comp.render();
         };
+
+        comp.build = function(items) {
+            var _this = this;
+            items.forEach(function(item) {
+                var card = Lampa.Template.get('card', item);
+                
+                card.on('hover:focus', function () {
+                    Lampa.Background.change(item.background_image);
+                });
+
+                card.on('hover:enter', function () {
+                    // При клике открываем встроенный поиск Лампы по этому аниме
+                    Lampa.Activity.push({
+                        url: '',
+                        title: 'Поиск: ' + item.title,
+                        component: 'search',
+                        search: item.title,
+                        page: 1
+                    });
+                });
+
+                _this.append(card);
+            });
+        };
+
         return comp;
     });
 
-    // 2. Вставляем кнопку прямо в дерево элементов (DOM)
-    function injectButton() {
-        // Ищем тот самый блок меню, который мы видели у тебя в инспекторе
+    // Вставляем кнопку в меню (метод, который у тебя сработал)
+    function inject() {
         var menu = $('.menu .scroll__body');
-        
-        if (menu.length && !$('.menu__item[data-action="my_hack"]').length) {
-            var item = $('<div class="menu__item selector" data-action="my_hack">' +
-                '<div class="menu__ico">' +
-                    '<svg height="36" viewBox="0 0 24 24" width="36" fill="#00ff00"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/></svg>' +
-                '</div>' +
+        if (menu.length && !$('.menu__item[data-action="my_hacker_anime"]').length) {
+            var item = $('<div class="menu__item selector" data-action="my_hacker_anime">' +
+                '<div class="menu__ico"><svg height="36" viewBox="0 0 24 24" width="36" fill="#00ff00"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg></div>' +
                 '<div class="menu__text">ХАКЕР АНИМЕ ⚡️</div>' +
             '</div>');
 
-            // Вешаем действие при клике
             item.on('click', function () {
-                Lampa.Activity.push({
-                    title: 'ХАКЕР АНИМЕ',
-                    component: 'my_hack'
-                });
+                Lampa.Activity.push({ title: 'ХАКЕР АНИМЕ', component: 'my_hacker_anime' });
             });
 
-            // Добавляем в самый конец списка меню
             menu.append(item);
-            console.log('Hacker: Button injected successfully!');
         }
     }
 
-    // Запускаем проверку каждые 2 секунды, пока меню не появится
-    var timer = setInterval(injectButton, 2000);
+    setInterval(inject, 2000);
 })();
