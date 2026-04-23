@@ -1,67 +1,67 @@
 (function () {
     'use strict';
 
-    Lampa.Component.add('my_hacker_anime', function (object) {
+    var plugin = {
+        component: 'my_anime_hacker',
+        name: 'Anime Hacker',
+        icon: '<svg height="36" viewBox="0 0 24 24" width="36" fill="#00ff00"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/></svg>'
+    };
+
+    // Создаем страницу (Компонент)
+    function animePage(object) {
         var comp = new Lampa.InteractionMain(object);
-        
         comp.create = function () {
             this.activity.loader(true);
             var _this = this;
-
-            // ТЕСТОВЫЕ ДАННЫЕ (если интернет-база тупит)
-            var test_items = [
-                {title: 'Наруто', img: 'https://media-amazon.com', description: 'Тестовая карточка'},
-                {title: 'Ван Пис', img: 'https://media-amazon.com', description: 'Проверка работы'}
-            ];
-
-            // Пробуем загрузить реальный ТОП аниме
+            // Запрос к аниме-базе
             Lampa.HTTP.get('https://jikan.moe', function (data) {
                 var items = data.data.map(function (a) {
-                    return {
-                        title: a.title,
-                        name: a.title,
-                        img: a.images.jpg.image_url,
-                        description: a.synopsis
-                    };
+                    return { title: a.title, img: a.images.jpg.image_url, description: a.synopsis };
                 });
                 _this.build(items);
                 _this.activity.loader(false);
-            }, function () {
-                // Если база не ответила - грузим тест
-                _this.build(test_items);
-                _this.activity.loader(false);
-                Lampa.Noty.show('Гружу тестовые данные...');
             });
-
             return comp.render();
         };
-
         comp.build = function(items) {
             var _this = this;
             items.forEach(function(item) {
                 var card = Lampa.Template.get('card', item);
                 card.on('hover:enter', function () {
-                    Lampa.Activity.push({url: '', title: item.title, component: 'search', search: item.title, page: 1});
+                    Lampa.Activity.push({ component: 'search', search: item.title });
                 });
                 _this.append(card);
             });
         };
+        return this.render();
+    };
 
-        return comp;
-    });
+    // Официальная регистрация компонента
+    Lampa.Component.add(plugin.component, animePage);
 
-    function inject() {
-        var menu = $('.menu .scroll__body');
-        if (menu.length && !$('.menu__item[data-action="my_hacker_anime"]').length) {
-            var item = $('<div class="menu__item selector" data-action="my_hacker_anime">' +
-                '<div class="menu__ico"><svg height="36" viewBox="0 0 24 24" width="36" fill="#00ff00"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg></div>' +
-                '<div class="menu__text">ХАКЕР АНИМЕ ⚡️</div>' +
-            '</div>');
-            item.on('click', function () {
-                Lampa.Activity.push({ title: 'ХАКЕР АНИМЕ', component: 'my_hacker_anime' });
+    // Функция запуска
+    function pluginStart() {
+        if (window['plugin_' + plugin.component + '_ready']) return;
+        window['plugin_' + plugin.component + '_ready'] = true;
+
+        // Создаем элемент меню как в твоем примере
+        var menu_item = $('<li class="menu__item selector">' +
+            '<div class="menu__ico">' + plugin.icon + '</div>' +
+            '<div class="menu__text">' + plugin.name + '</div>' +
+        '</li>');
+
+        menu_item.on('hover:enter', function () {
+            Lampa.Activity.push({
+                title: plugin.name,
+                component: plugin.component,
+                page: 1
             });
-            menu.append(item);
-        }
+        });
+
+        // Добавляем в список
+        $('.menu .menu__list').append(menu_item);
     }
-    setInterval(inject, 2000);
+
+    if (window.appready) pluginStart();
+    else Lampa.Listener.follow('app', function (e) { if (e.type === 'ready') pluginStart(); });
 })();
